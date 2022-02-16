@@ -1,3 +1,4 @@
+from multiprocessing.sharedctypes import SynchronizedBase
 import pygame
 pygame.init()
 
@@ -31,6 +32,9 @@ BALL_COLOR = WHITE
 BALL_MAX_VELOCITY = 5
 BALL_RADIUS = 7
 
+# game configs
+MAX_SCORE = 5
+
 
 # ====================================
 # ============= CLASSES ==============
@@ -38,8 +42,8 @@ BALL_RADIUS = 7
 
 class Paddle:
     def __init__(self, x, y, width=PADDLE_WIDTH, height=PADDLE_HEIGHT):
-        self.x = x
-        self.y = y
+        self.x = self.origin_x = x
+        self.y = self.origin_y = y
         self.width = width
         self.height = height
         
@@ -47,17 +51,20 @@ class Paddle:
         pygame.draw.rect(win, PADDLE_COLOR, (self.x, self.y, self.width, self.height))
         
     def move(self, up=True):
-        
         if up:
             self.y -= PADDLE_VELOCITY
         else:
             self.y += PADDLE_VELOCITY
             
+    def reset(self):
+        self.x = self.origin_x
+        self.y = self.origin_y
+            
             
 class Ball:
     def __init__(self, x, y, radius=BALL_RADIUS):
-        self.x = x
-        self.y = y
+        self.x = self.origin_x = x
+        self.y = self.origin_y = y
         self.radius = radius
         self.x_vel = BALL_MAX_VELOCITY
         self.y_vel = 0
@@ -69,6 +76,12 @@ class Ball:
         self.x += self.x_vel
         self.y += self.y_vel
         
+    def reset(self):
+        self.x = self.origin_x
+        self.y = self.origin_y
+        self.y_vel = 0
+        self.x_vel *= -1
+        
 
 # ====================================
 # ============= METHODS ==============
@@ -77,9 +90,19 @@ class Ball:
 def draw(win, paddles, ball, scores):
     win.fill(BLACK)
     
+    # p1_text = SCORE_FONT.render("P1", 2, WHITE)
+    # p2_text = SCORE_FONT.render("P2", 2, WHITE)
+    
     s_left, s_right = scores
     s_left_text = SCORE_FONT.render(f"{s_left}", 1, WHITE)
     s_right_text = SCORE_FONT.render(f"{s_right}", 1, WHITE)
+    
+    # win.blit(p1_text, (WIDTH//4 - s_left_text.get_width()//2, 20))
+    # win.blit(p2_text, (WIDTH*3//4 - s_right_text.get_width()//2, 20))
+    
+    # win.blit(s_left_text, (WIDTH//4 - s_left_text.get_width()//2, 25+p1_text.get_height()))
+    # win.blit(s_right_text, (WIDTH*3//4 - s_right_text.get_width()//2, 25+p2_text.get_height()))
+    
     win.blit(s_left_text, (WIDTH//4 - s_left_text.get_width()//2, 20))
     win.blit(s_right_text, (WIDTH*3//4 - s_right_text.get_width()//2, 20))
     
@@ -135,12 +158,16 @@ def handle_collision(ball, paddles):
                 diff_y = middle_y - ball.y
                 r_factor = (p_right.height/2) / BALL_MAX_VELOCITY
                 ball.y_vel = -(diff_y / r_factor)
-         
-def reset_ball(ball):
-    ball.x, ball.y = WIDTH//2, HEIGHT//2
+                
+
+def reset_game_board(ball, paddles):
+    p_left, p_right = paddles
+    ball.reset()
+    p_left.reset()
+    p_right.reset()
     
                 
-def handle_score(ball, scores):
+def handle_score(ball, paddles, scores):
     s_left, s_right = scores
     scored = False
     if ball.x < 0:
@@ -148,14 +175,19 @@ def handle_score(ball, scores):
         scored = True
     elif ball.x > WIDTH:
         s_left += 1
+        scored = True
     if scored:
-        reset_ball(ball)
+        reset_game_board(ball, paddles)
         # print(f"Score {s_left}:{s_right}")
     return s_left, s_right
+
+def game_over(ball, paddles, scores):
+    s_left, s_right = scores
+    if s_left >= MAX_SCORE or s_right >= MAX_SCORE:
+        s_left, s_right = 0, 0
+        reset_game_board(ball, paddles)
+    return s_left, s_right 
     
-        
-def handle_ball_movement(ball, paddles):
-    pass
 
 def main():
     run = True
@@ -182,7 +214,8 @@ def main():
         
         ball.move()
         handle_collision(ball, paddles)
-        left_score, right_score = handle_score(ball, [left_score, right_score])
+        left_score, right_score = handle_score(ball, paddles, [left_score, right_score])
+        left_score, right_score = game_over(ball, paddles, [left_score, right_score])
     
     pygame.quit()
     
