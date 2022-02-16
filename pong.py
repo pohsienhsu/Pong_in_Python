@@ -18,6 +18,9 @@ FPS = 60
 WHITE = (255, 255, 255)
 BLACK = (0, 0 ,0)
 
+# font
+SCORE_FONT = pygame.font.SysFont("comicsans", 50)
+
 # paddle configs
 PADDLE_COLOR = WHITE
 PADDLE_WIDTH, PADDLE_HEIGHT = 20, 100
@@ -71,8 +74,14 @@ class Ball:
 # ============= METHODS ==============
 # ====================================
 
-def draw(win, paddles, ball):
+def draw(win, paddles, ball, scores):
     win.fill(BLACK)
+    
+    s_left, s_right = scores
+    s_left_text = SCORE_FONT.render(f"{s_left}", 1, WHITE)
+    s_right_text = SCORE_FONT.render(f"{s_right}", 1, WHITE)
+    win.blit(s_left_text, (WIDTH//4 - s_left_text.get_width()//2, 20))
+    win.blit(s_right_text, (WIDTH*3//4 - s_right_text.get_width()//2, 20))
     
     for paddle in paddles:
         paddle.draw(win)
@@ -87,18 +96,65 @@ def draw(win, paddles, ball):
     pygame.display.update()
     
 def handle_paddle_movement(key, paddles):
-    left, right = paddles
-    if key[pygame.K_w] and left.y - PADDLE_VELOCITY >= 0:
-        left.move(up=True)
-    if key[pygame.K_s] and left.y + (PADDLE_VELOCITY+PADDLE_HEIGHT) <= HEIGHT:
-        left.move(up=False)
+    p_left, p_right = paddles
+    if key[pygame.K_w] and p_left.y - PADDLE_VELOCITY >= 0:
+        p_left.move(up=True)
+    if key[pygame.K_s] and p_left.y + (PADDLE_VELOCITY+PADDLE_HEIGHT) <= HEIGHT:
+        p_left.move(up=False)
         
-    if key[pygame.K_UP] and right.y - PADDLE_VELOCITY >= 0:
-        right.move(up=True)
-    if key[pygame.K_DOWN] and right.y + (PADDLE_VELOCITY+PADDLE_HEIGHT) <= HEIGHT:
-        right.move(up=False)
+    if key[pygame.K_UP] and p_right.y - PADDLE_VELOCITY >= 0:
+        p_right.move(up=True)
+    if key[pygame.K_DOWN] and p_right.y + (PADDLE_VELOCITY+PADDLE_HEIGHT) <= HEIGHT:
+        p_right.move(up=False)
         
-def handle_ball_movement(ball):
+def handle_collision(ball, paddles):
+    p_left, p_right = paddles
+    
+    # collision with top-down wall
+    if (ball.y + ball.radius >= HEIGHT) or (ball.y - ball.radius <= 0):
+        ball.y_vel = (-1)*ball.y_vel
+        
+    # collision with left paddle
+    if ball.x_vel < 0:
+        if ball.y >= p_left.y and ball.y <= p_left.y + p_left.height:
+            if ball.x - ball.radius <= p_left.x + p_left.width:
+                ball.x_vel *= (-1)
+                # displacement
+                middle_y = p_left.y + p_left.height / 2
+                diff_y = middle_y - ball.y
+                r_factor = (p_left.height/2) / BALL_MAX_VELOCITY
+                ball.y_vel = -(diff_y / r_factor)
+    # collision with right paddle    
+    else:
+        if ball.y >= p_right.y and ball.y <= p_right.y + p_right.height:
+            if ball.x - ball.radius >= p_right.x:
+                ball.x_vel *= (-1)
+                
+                # displacement
+                middle_y = p_right.y + p_right.height / 2
+                diff_y = middle_y - ball.y
+                r_factor = (p_right.height/2) / BALL_MAX_VELOCITY
+                ball.y_vel = -(diff_y / r_factor)
+         
+def reset_ball(ball):
+    ball.x, ball.y = WIDTH//2, HEIGHT//2
+    
+                
+def handle_score(ball, scores):
+    s_left, s_right = scores
+    scored = False
+    if ball.x < 0:
+        s_right += 1
+        scored = True
+    elif ball.x > WIDTH:
+        s_left += 1
+    if scored:
+        reset_ball(ball)
+        # print(f"Score {s_left}:{s_right}")
+    return s_left, s_right
+    
+        
+def handle_ball_movement(ball, paddles):
     pass
 
 def main():
@@ -111,10 +167,11 @@ def main():
     
     ball = Ball(WIDTH//2, HEIGHT//2)
     
+    left_score, right_score = 0, 0
     
     while run:
         clock.tick(FPS)
-        draw(WINDOW, paddles, ball)
+        draw(WINDOW, paddles, ball, [left_score, right_score])
         
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
@@ -123,7 +180,9 @@ def main():
         keys = pygame.key.get_pressed()
         handle_paddle_movement(keys, paddles)
         
-        handle_ball_movement(ball)
+        ball.move()
+        handle_collision(ball, paddles)
+        left_score, right_score = handle_score(ball, [left_score, right_score])
     
     pygame.quit()
     
