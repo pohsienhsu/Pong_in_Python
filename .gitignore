@@ -2,6 +2,9 @@
 __pycache__/
 *.py[cod]
 
+# Virtual Environment
+venv/
+
 # C extensions
 *.so
 
@@ -51,3 +54,6 @@ docs/_build/
 
 # Vscode
 .vscode
+
+# Other
+.DS_Store
