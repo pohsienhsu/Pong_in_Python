@@ -18,6 +18,7 @@ FPS = 60
 # colors
 WHITE = (255, 255, 255)
 BLACK = (0, 0 ,0)
+YELLOW = (255, 255, 0)
 
 # font
 SCORE_FONT = pygame.font.SysFont("comicsans", 50)
@@ -28,12 +29,12 @@ PADDLE_WIDTH, PADDLE_HEIGHT = 20, 100
 PADDLE_VELOCITY = 4
 
 # ball configs
-BALL_COLOR = WHITE
+BALL_COLOR = YELLOW
 BALL_MAX_VELOCITY = 5
 BALL_RADIUS = 7
 
 # game configs
-MAX_SCORE = 5
+MAX_SCORE = 3
 
 
 # ====================================
@@ -183,10 +184,22 @@ def handle_score(ball, paddles, scores):
 
 def game_over(ball, paddles, scores):
     s_left, s_right = scores
+    
     if s_left >= MAX_SCORE or s_right >= MAX_SCORE:
+        winner = "Left Player" if s_left >= MAX_SCORE else "Right Player"
+        win_text = SCORE_FONT.render(f"{winner} Won!", 1, WHITE)
+        
+        for i in range(10, HEIGHT, HEIGHT//20):
+            if i % 2 == 1:
+                continue
+            pygame.draw.rect(WINDOW, BLACK, (WIDTH//2 - 5, i, 10, HEIGHT//20))
+        
+        WINDOW.blit(win_text, (WIDTH//2 - win_text.get_width()//2, HEIGHT//2 - win_text.get_height()//2))
+        pygame.display.update()
+        pygame.time.delay(3000)
         s_left, s_right = 0, 0
         reset_game_board(ball, paddles)
-    return s_left, s_right 
+    return s_left, s_right
     
 
 def main():
@@ -216,6 +229,7 @@ def main():
         handle_collision(ball, paddles)
         left_score, right_score = handle_score(ball, paddles, [left_score, right_score])
         left_score, right_score = game_over(ball, paddles, [left_score, right_score])
+            
     
     pygame.quit()
     
